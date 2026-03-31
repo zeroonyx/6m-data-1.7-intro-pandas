@@ -1,275 +1,193 @@
-# Assignment
+# 📝 Post-Class: Introduction to Pandas
 
-## Brief
+> ⏱️ **Estimated Time:** 45–60 minutes | Complete this **after** your class session.
 
-Write the Python codes for the following questions.
+---
 
-## Instructions
+## 🎯 Learning Objectives Revisited
 
-Paste the answer as Python in the answer code section below each question.
+This assignment reinforces what you practised in class:
+- Constructing and modifying Pandas DataFrames
+- Applying `.loc` and `.iloc` for precise data extraction
+- Transforming data with `.apply()`, `.map()`, sorting, and ranking
 
-### Question 1
+---
 
-Question: Select all numeric columns except float from the DataFrame `dft`.
+## Part 1: Conceptual Check (15 min)
 
-Answer:
+Test your understanding before diving into the code.
 
-```python
+**Question 1:** What is the key difference between a Pandas `Series` and a `DataFrame`?
 
-```
+**Question 2:** You run `df.loc[0:3]`. How many rows do you get? What about `df.iloc[0:3]`?
 
-### Question 2
+**Question 3:** You have a DataFrame with a `price` column stored as `object` type (strings like "£45.99"). What problem does this cause, and how do you fix it?
 
-Question: How do you return the last 3 rows of a DataFrame `df`?
+**Question 4:** When would you use `.apply()` instead of a direct vectorised operation like `df['col'] * 2`?
 
-Answer:
+**Question 5:** How do you select all numeric columns from a DataFrame, excluding float types?
 
-```python
+<details>
+<summary>💡 Check Your Answers</summary>
 
-```
+**Q1:** A `Series` is 1-dimensional (a single column with an index). A `DataFrame` is 2-dimensional — it's a collection of Series sharing the same index, like a full spreadsheet.
 
-### Question 3
+**Q2:** `.loc[0:3]` returns **4 rows** (0, 1, 2, and 3 — end is inclusive). `.iloc[0:3]` returns **3 rows** (0, 1, 2 — end is exclusive).
 
-Question: Return the minimum and maximum of a Series `x` as a new Series with the index `["min", "max"]`.
+**Q3:** You can't compute statistics (mean, sum) on string columns. Fix with: `df['price'] = df['price'].str.extract(r'(\d+\.?\d*)').astype(float)`
 
-Answer:
+**Q4:** Use `.apply()` when you need row-level logic involving multiple columns, or when no vectorised equivalent exists. For simple column-wise maths, always prefer vectorised operations — they're 10–100× faster.
 
-```python
+**Q5:** `df.select_dtypes(include=['number'], exclude=['float'])`
 
-```
+</details>
 
-### Question 4
+---
 
-Question: Multiply `df1` and `df2` (two DataFrames) with a `fill_value` of 1.
+## Part 2: Practical Challenge (30–45 min)
 
-Answer:
+### Scenario: "The Bookshop Analyst"
 
-```python
+You're a data analyst for an online bookshop. The operations team has exported their inventory to a CSV and they need your help making sense of it.
 
-```
+---
 
-### Question 5
+### Challenge 1: Build and Inspect the Dataset
 
-Question: How do you create a DataFrame from a nested dictionary of dictionaries?
-
-```python
-nested_dict = {'A': {'a': 1, 'b': 2}, 'B': {'a': 3, 'b': 4}}
-```
-
-Answer:
+Create the following DataFrame and perform a health check:
 
 ```python
-
-```
-
-
-## Assignment Solutions
-
-
-### Question 1
-
-Question: Select all numeric columns except float from the DataFrame `dft`.
-
-Answer:
-
-```python
-numeric_cols = dft.select_dtypes(include=['number'], exclude=['float'])
-```
-
-### Question 2
-
-Question: How do you return the last 3 rows of a DataFrame `df`?
-
-Answer:
-
-```python
-last_3_rows = df.tail(3)
-```
-
-### Question 3
-
-Question: Return the minimum and maximum of a Series `x` as a new Series with the index `["min", "max"]`.
-
-Answer:
-
-```python
-pd.Series([x.min(), x.max()], index=["min", "max"])
-```
-
-### Question 4
-
-Question: Multiply `df1` and `df2` (two DataFrames) with a `fill_value` of 1.
-
-Answer:
-
-```python
-result = df1.mul(df2, fill_value=1)
-```
-
-### Question 5
-
-Question: How do you create a DataFrame from a nested dictionary of dictionaries?
-
-```python
-nested_dict = {'A': {'a': 1, 'b': 2}, 'B': {'a': 3, 'b': 4}}
-```
-
-Answer:
-
-```python
-df = pd.DataFrame.from_dict(nested_dict, orient='index')
-```
-
-# **Post-Class Self-Study: Optional Pandas Topics**
-
-**Context:** This document covers advanced data manipulation techniques found in the course notebook. These topics are useful for specific data alignment and cleaning scenarios but were not covered in the main 3-hour session.
-
-## **1\. Reindexing**
-
-reindex is the fundamental data alignment method in pandas. It is used to create a new object with the data conformed to a new index.
-
-### **Series Reindexing**
-
-reindex can be used to rearrange the data according to the new index, introducing missing values if any index values were not already present.
-
-```
-
 import pandas as pd
-import numpy as np
 
-obj = pd.Series([4.5, 7.2, -5.3, 3.6], index=['d', 'b', 'a', 'c'])
-print("Original Series:")
-print(obj)
-
-# Reindex with new labels
-obj2 = obj.reindex(['a', 'b', 'c', 'd', 'e'])
-print("\nReindexed Series:")
-print(obj2)
-
-```
-
-### **DataFrame Reindexing**
-
-You can reindex the (row) index or columns of a dataframe.
-
-```
-
-frame = pd.DataFrame(np.arange(9).reshape((3, 3)),
-                     index=['a', 'c', 'd'],
-                     columns=['Ohio', 'Texas', 'California'])
-
-# Reindex rows
-frame2 = frame.reindex(['a', 'b', 'c', 'd'])
-print("Reindexed Rows:")
-print(frame2)
-
-# Reindex columns
-states = ["Texas", "Utah", "California"]
-print("\nReindexed Columns:")
-print(frame.reindex(columns=states))
-
-```
-
-### **Interpolation**
-
-The method option allows us to do interpolation or filling of values when reindexing. For example, we can fill the missing values with the last known value (forward fill). This is useful for time series data.
-
-```
-
-obj3 = pd.Series(["blue", "purple", "yellow"], index=[0, 2, 4])
-print(obj3.reindex(np.arange(6), method="ffill"))
-
-```
-
-## **2\. Dropping Entries**
-
-You can drop entries from an axis using the drop method. It will return a new object with the indicated value or values deleted from an axis.
-
-### **Dropping from Series**
-
-```
-
-obj = pd.Series(np.arange(5.), index=["a", "b", "c", "d", "e"])
-new_obj = obj.drop("c")
-print(new_obj)
-
-# Drop multiple items
-print(obj.drop(["d", "c"]))
-
-```
-
-### **Dropping from DataFrame**
-
-With DataFrame, index values can be deleted from either axis.
-
-```
-
-data = pd.DataFrame(np.arange(16).reshape((4, 4)),
-                    index=["Ohio", "Colorado", "Utah", "New York"],
-                    columns=["one", "two", "three", "four"])
-
-# Drop rows (default axis=0)
-print(data.drop(["Colorado", "Ohio"]))
-
-# Drop columns (axis=1 or axis="columns")
-print(data.drop("two", axis=1))
-
-```
-
-## **3\. Arithmetic and Data Alignment**
-
-One of Pandas' most powerful features is how it handles arithmetic between objects with different indexes.
-
-### **Data Alignment**
-
-When adding two DataFrames, if index pairs are not the same, the respective index in the result will be the union of the index pairs.
-
-```
-
-df1 = pd.DataFrame(np.arange(9.).reshape((3, 3)), columns=list("bcd"),
-                   index=["Ohio", "Texas", "Colorado"])
-
-df2 = pd.DataFrame(np.arange(12.).reshape((4, 3)), columns=list("bde"),
-                   index=["Utah", "Ohio", "Texas", "Oregon"])
-
-# Adding them results in NaNs where labels don't overlap
-print(df1 + df2)
-
-```
-
-### **Filling Values**
-
-You can fill missing values with a special value (like 0\) when an axis label is found in one object but not the other using the .add method.
-
-```
-
-df1 = pd.DataFrame(np.arange(12.).reshape((3, 4)), columns=list("abcd"))
-df2 = pd.DataFrame(np.arange(20.).reshape((4, 5)), columns=list("abcde"))
-df2.loc[1, "b"] = np.nan
-
-# Add with fill_value=0
-# This substitutes 0 for any missing values in the operation
-print(df1.add(df2, fill_value=0))
-
-```
-
-### **Combining Overlapping Data**
-
-Sometimes you want to combine two datasets where values in one are preferred over the other. combine\_first allows you to patch missing data in one object with data from another.
-
-```
-
-df1 = pd.DataFrame({
-    "A": [1.0, np.nan, 3.0, 5.0, np.nan],
-    "B": [np.nan, 2.0, 3.0, np.nan, 6.0]
+books = pd.DataFrame({
+    'title': ['The Pragmatic Programmer', 'Clean Code', 'Python Crash Course',
+              'Data Science from Scratch', 'Designing Data-Intensive Apps'],
+    'author': ['Hunt & Thomas', 'Robert Martin', 'Eric Matthes',
+               'Joel Grus', 'Martin Kleppmann'],
+    'genre': ['Tech', 'Tech', 'Tech', 'Data', 'Data'],
+    'price': [45.99, 38.50, 29.99, 42.00, 55.00],
+    'units_sold': [120, 95, 200, 80, 60],
+    'in_stock': [True, True, False, True, False]
 })
-
-df2 = pd.DataFrame({
-    "A": [5.0, 2.0, 4.0, np.nan, 3.0, 7.0],
-    "B": [np.nan, np.nan, 3.0, 4.0, 6.0, 8.0],
-})
-
-# Patch missing values in df1 with values from df2
-print(df1.combine_first(df2))
-
 ```
+
+**Tasks:**
+1. Use `.info()` — how many non-null values does each column have?
+2. Use `.describe()` — what's the average price and maximum units sold?
+3. Add a `revenue` column: `price × units_sold`.
+4. What is the total revenue across all books?
+
+<details>
+<summary>💡 Hint</summary>
+
+For total revenue: `books['revenue'].sum()`. For the new column: `books['revenue'] = books['price'] * books['units_sold']`.
+
+</details>
+
+<details>
+<summary>✅ Solution</summary>
+
+```python
+books['revenue'] = books['price'] * books['units_sold']
+print(books.info())
+print(books.describe())
+print(f"Total revenue: £{books['revenue'].sum():,.2f}")
+```
+
+</details>
+
+---
+
+### Challenge 2: Indexing & Filtering
+
+**Tasks:**
+1. Use `.loc` to select only `title` and `revenue` for Data genre books.
+2. Use `.iloc` to retrieve the last 3 rows and first 3 columns.
+3. Filter books that are **in stock** AND have a **price above £40**.
+4. Find the book with the **highest revenue** using `.loc` with `.idxmax()`.
+
+<details>
+<summary>💡 Hint</summary>
+
+For `.idxmax()`: `books.loc[books['revenue'].idxmax()]` returns the full row of the highest-revenue book.
+
+</details>
+
+<details>
+<summary>✅ Solution</summary>
+
+```python
+# 1. Data genre books, title and revenue only
+data_books = books.loc[books['genre'] == 'Data', ['title', 'revenue']]
+
+# 2. Last 3 rows, first 3 columns
+subset = books.iloc[-3:, :3]
+
+# 3. In-stock books priced above £40
+premium_stock = books.loc[(books['in_stock'] == True) & (books['price'] > 40)]
+
+# 4. Highest revenue book
+top_book = books.loc[books['revenue'].idxmax()]
+print(f"Top earner: {top_book['title']} — £{top_book['revenue']:,.2f}")
+```
+
+</details>
+
+---
+
+### Challenge 3: Transform, Sort & Rank
+
+**Tasks:**
+1. Use `.apply()` to add a `price_tier` column: `'Budget'` (< £35), `'Standard'` (£35–£50), `'Premium'` (> £50).
+2. Sort the DataFrame by `revenue` descending.
+3. Add a `sales_rank` column using `.rank(ascending=False)`.
+4. Use `.map()` to encode `genre` as a number: `{'Tech': 0, 'Data': 1}`.
+
+<details>
+<summary>✅ Solution</summary>
+
+```python
+# 1. Price tier
+def get_tier(price):
+    if price < 35:
+        return 'Budget'
+    elif price <= 50:
+        return 'Standard'
+    else:
+        return 'Premium'
+
+books['price_tier'] = books['price'].apply(get_tier)
+
+# 2. Sort by revenue
+books_sorted = books.sort_values('revenue', ascending=False)
+
+# 3. Sales rank
+books['sales_rank'] = books['units_sold'].rank(ascending=False).astype(int)
+
+# 4. Encode genre
+books['genre_encoded'] = books['genre'].map({'Tech': 0, 'Data': 1})
+
+print(books[['title', 'price_tier', 'sales_rank', 'genre_encoded']])
+```
+
+</details>
+
+---
+
+### 🏆 Stretch Challenge (Optional)
+
+The manager wants a report comparing average price and total revenue by `price_tier`. Use `groupby()` to generate this summary. Which tier contributes the most total revenue despite having the lowest average price?
+
+---
+
+## 💬 Reflection (5 min)
+
+In 2–3 sentences, answer:
+
+> *Think of a dataset you might work with in your field. Which Pandas operation from today (indexing, `.apply()`, sorting, or ranking) would be most immediately useful? Why?*
+
+---
+
+## 📤 Share Your Work
+
+Post your Challenge 3 output and reflection in **Discord** under `#assignments`. React to at least one classmate's post.
