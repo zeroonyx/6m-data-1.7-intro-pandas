@@ -1,8 +1,9 @@
-# **Pre-Class Self-Study: Introduction to Pandas**
+# 📚 Pre-Class: Introduction to Pandas
 
-⏱️ Estimated Time: 45-60 minutes
+⏱️ **Estimated Time:** 45–60 minutes
+**Prerequisites:** Lesson 1.6 — NumPy
 
-📅 Complete Before: Lesson Start
+> In Lesson 1.6 you worked with NumPy arrays — fast numerical grids. NumPy is powerful but low-level: it doesn't know about column names, dates, or mixed data types. **Pandas** is built on top of NumPy and adds all of that — it's the tool you'll use to load, explore, and clean real-world datasets for the rest of this course.
 
 ## **🎯 What You'll Learn Before Class**
 
@@ -117,13 +118,24 @@ print(df)
 
 ## **✅ Pre-Class Self-Check**
 
-Before Zoom class, make sure you can:
+Before class, make sure you can:
 
-* \[ \] Import pandas as pd.  
-* \[ \] Create a simple Series from a list.  
+* \[ \] Import pandas as pd.
+* \[ \] Create a simple Series from a list.
 * \[ \] Explain the difference between a Series and a DataFrame.
 
 ## **❓ Pre-Class Questions to Consider**
 
-1. Why might we want to label our data (using an Index) instead of just using numbered positions (0, 1, 2)?  
+Try to answer these yourself first, then check below.
+
+1. Why might we want to label our data (using an Index) instead of just using numbered positions (0, 1, 2)?
 2. If a DataFrame is a collection of Series, what happens if we extract just one column from a DataFrame?
+
+<details>
+<summary>Suggested answers</summary>
+
+**Q1:** Labels make data self-documenting and robust. If you use positional indexing (`df[0]`) and someone reorders the DataFrame, your index now points to the wrong row. A named index like `df['Alice']` or a date index like `df['2024-01-15']` is meaningful and stable — it doesn't break if rows are added or reordered.
+
+**Q2:** Extracting a single column from a DataFrame returns a **Series** — a 1D labelled array. You can verify this with `type(df['column_name'])`. The Series shares the same row index as the original DataFrame, which is why you can combine or compare columns easily.
+
+</details>
