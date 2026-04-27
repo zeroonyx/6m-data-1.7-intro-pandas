@@ -1,0 +1,1035 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>Pandas Concepts — Interactive Visualisations</title>
+<style>
+  :root {
+    --bg: #0e1116;
+    --panel: #171b22;
+    --panel-2: #1f242d;
+    --border: #2a313c;
+    --text: #e6e9ef;
+    --muted: #9aa3b2;
+    --accent: #6ad0f0;       /* pandas-ish blue */
+    --accent-2: #f0a96a;     /* warm orange */
+    --good: #6ee7a3;
+    --bad: #ef6a6a;
+    --hi: #fff7c2;
+    --shadow: 0 6px 24px rgba(0,0,0,.4);
+  }
+  * { box-sizing: border-box; }
+  html, body {
+    margin: 0; padding: 0;
+    background: var(--bg);
+    color: var(--text);
+    font: 15px/1.5 -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  }
+  header {
+    padding: 22px 28px 8px;
+    border-bottom: 1px solid var(--border);
+    background: linear-gradient(180deg, #131820, #0e1116);
+  }
+  header h1 {
+    margin: 0 0 4px; font-size: 22px; font-weight: 700;
+    letter-spacing: .2px;
+  }
+  header h1 .pill {
+    display: inline-block; vertical-align: middle;
+    background: var(--accent); color: #0a1218;
+    border-radius: 999px; font-size: 11px; font-weight: 700;
+    padding: 3px 10px; margin-left: 10px; letter-spacing: .5px;
+  }
+  header p { margin: 0; color: var(--muted); font-size: 13px; }
+  nav.tabs {
+    display: flex; flex-wrap: wrap; gap: 4px;
+    padding: 12px 18px 0; background: var(--bg);
+    border-bottom: 1px solid var(--border);
+    position: sticky; top: 0; z-index: 10;
+  }
+  nav.tabs button {
+    background: transparent; color: var(--muted);
+    border: 1px solid transparent; border-bottom: none;
+    border-radius: 8px 8px 0 0;
+    padding: 10px 16px; cursor: pointer;
+    font: inherit; font-size: 13px; font-weight: 600;
+    transition: background .15s, color .15s, border-color .15s;
+  }
+  nav.tabs button:hover { color: var(--text); background: rgba(255,255,255,.03); }
+  nav.tabs button.active {
+    color: var(--accent); background: var(--panel);
+    border-color: var(--border); border-bottom-color: var(--panel);
+    margin-bottom: -1px;
+  }
+  main {
+    padding: 24px clamp(16px, 4vw, 48px) 80px;
+    max-width: 1200px; margin: 0 auto;
+  }
+  section.tab { display: none; }
+  section.tab.active { display: block; animation: fadeIn .25s ease; }
+  @keyframes fadeIn { from { opacity: 0; transform: translateY(4px); } to { opacity: 1; transform: none; } }
+  h2.section-title {
+    font-size: 20px; margin: 0 0 4px;
+  }
+  p.lede { color: var(--muted); margin: 0 0 18px; max-width: 800px; }
+
+  /* ==== DataFrame styling ==== */
+  .df-wrap { overflow-x: auto; padding: 4px; }
+  table.df {
+    border-collapse: separate; border-spacing: 0;
+    background: var(--panel); border: 1px solid var(--border);
+    border-radius: 10px; overflow: hidden;
+    font-variant-numeric: tabular-nums;
+  }
+  table.df th, table.df td {
+    padding: 10px 14px; text-align: left;
+    border-bottom: 1px solid var(--border);
+    border-right: 1px solid var(--border);
+    transition: background .2s, transform .25s;
+  }
+  table.df th { background: var(--panel-2); font-weight: 700; color: var(--text); }
+  table.df th.idx-h, table.df td.idx { background: var(--panel-2); color: var(--accent); font-weight: 700; }
+  table.df th.idx-h { color: var(--muted); font-weight: 600; font-size: 11px; text-transform: uppercase; letter-spacing: 1px; }
+  table.df tr:last-child td { border-bottom: none; }
+  table.df th:last-child, table.df td:last-child { border-right: none; }
+  table.df td { color: var(--text); }
+  table.df td.num { text-align: right; }
+  table.df .dtype {
+    display: block; color: var(--muted);
+    font-size: 10px; font-weight: 500; letter-spacing: .5px;
+    margin-top: 3px; text-transform: lowercase;
+  }
+  table.df td.hl, table.df th.hl { background: rgba(106,208,240,.18); }
+  table.df td.hl-row, table.df th.hl-row { background: rgba(240,169,106,.12); }
+  table.df td.faded { opacity: .25; }
+  table.df td.dropped { opacity: 0; transform: translateX(-30px); }
+
+  /* ==== Tooltip ==== */
+  #tooltip {
+    position: fixed; pointer-events: none;
+    background: #0a0e14; color: var(--text);
+    border: 1px solid var(--accent); border-radius: 6px;
+    padding: 6px 10px; font-size: 12px;
+    box-shadow: var(--shadow);
+    opacity: 0; transition: opacity .12s;
+    max-width: 260px; z-index: 100;
+  }
+
+  /* ==== Cards / panels ==== */
+  .row { display: flex; gap: 18px; flex-wrap: wrap; align-items: flex-start; }
+  .col { flex: 1 1 320px; min-width: 0; }
+  .panel {
+    background: var(--panel); border: 1px solid var(--border);
+    border-radius: 10px; padding: 16px;
+  }
+  .panel h3 { margin: 0 0 10px; font-size: 14px; color: var(--accent); }
+  .panel.dim { background: var(--panel-2); }
+
+  /* ==== Buttons / inputs ==== */
+  .btn {
+    background: var(--panel-2); color: var(--text);
+    border: 1px solid var(--border); border-radius: 6px;
+    padding: 8px 12px; font: inherit; font-size: 12px; font-weight: 600;
+    cursor: pointer; transition: background .15s, border-color .15s;
+  }
+  .btn:hover { background: #2a313c; border-color: var(--accent); }
+  .btn.primary { background: var(--accent); color: #0a1218; border-color: var(--accent); }
+  .btn.primary:hover { background: #8ddcf3; }
+  .btn-row { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 10px; }
+  input.code, textarea.code {
+    width: 100%; background: #0a0e14; color: var(--text);
+    border: 1px solid var(--border); border-radius: 6px;
+    padding: 10px; font: 13px/1.5 "SF Mono", "Menlo", "Consolas", monospace;
+    resize: vertical;
+  }
+  input.code:focus, textarea.code:focus { outline: 1px solid var(--accent); border-color: var(--accent); }
+  .code-result {
+    margin-top: 10px; padding: 12px;
+    background: #0a0e14; border-radius: 6px; border: 1px dashed var(--border);
+    font: 13px/1.5 "SF Mono", "Menlo", "Consolas", monospace;
+    color: var(--good); white-space: pre-wrap; min-height: 1.5em;
+  }
+  .code-result.err { color: var(--bad); }
+
+  /* ==== Misc ==== */
+  .legend {
+    display: inline-flex; align-items: center; gap: 8px;
+    padding: 6px 12px; background: var(--panel-2);
+    border-radius: 999px; font-size: 12px; color: var(--muted);
+    margin-right: 10px; margin-bottom: 8px;
+  }
+  .legend strong { color: var(--text); }
+  kbd {
+    background: var(--panel-2); border: 1px solid var(--border);
+    border-radius: 4px; padding: 1px 6px;
+    font: 11px "SF Mono", monospace; color: var(--accent);
+  }
+  .annotation {
+    color: var(--muted); font-size: 12px; font-style: italic;
+    margin: 8px 0 0; padding-left: 12px; border-left: 2px solid var(--accent);
+  }
+  .arrow {
+    display: inline-block; color: var(--accent-2);
+    font-size: 18px; margin: 0 6px; vertical-align: middle;
+  }
+  .true-cell { color: var(--good); font-weight: 700; }
+  .false-cell { color: var(--bad); font-weight: 700; }
+
+  /* slider */
+  input[type=range] {
+    width: 100%; -webkit-appearance: none; height: 6px;
+    border-radius: 3px; background: var(--panel-2); outline: none;
+  }
+  input[type=range]::-webkit-slider-thumb {
+    -webkit-appearance: none; appearance: none;
+    width: 18px; height: 18px; border-radius: 50%;
+    background: var(--accent); cursor: pointer;
+    border: 2px solid var(--bg);
+  }
+
+  /* apply animation */
+  .apply-stage {
+    display: grid; grid-template-columns: 1fr auto 1fr auto 1fr;
+    gap: 14px; align-items: center; margin-top: 10px;
+  }
+  .apply-stage .arrow-big {
+    color: var(--accent); font-size: 28px; text-align: center;
+  }
+  .fn-box {
+    background: #0a0e14; border: 1.5px dashed var(--accent);
+    border-radius: 8px; padding: 14px;
+    font: 12px/1.4 "SF Mono", monospace; color: var(--accent);
+    min-height: 140px;
+  }
+  .out-cell {
+    background: var(--panel-2); border: 1px solid var(--border);
+    border-radius: 6px; padding: 8px 12px; margin: 4px 0;
+    font-family: "SF Mono", monospace; font-size: 13px;
+    transition: background .25s, transform .25s, border-color .25s;
+  }
+  .out-cell.active { background: rgba(106,208,240,.2); border-color: var(--accent); transform: scale(1.04); }
+  .out-cell.done { background: rgba(110,231,163,.1); border-color: var(--good); color: var(--good); }
+  .in-cell {
+    background: var(--panel-2); border: 1px solid var(--border);
+    border-radius: 6px; padding: 8px 12px; margin: 4px 0;
+    font-family: "SF Mono", monospace; font-size: 13px;
+    transition: background .25s, transform .25s, border-color .25s;
+  }
+  .in-cell.active { background: rgba(240,169,106,.18); border-color: var(--accent-2); transform: scale(1.04); }
+
+  /* sort/rank panel */
+  .rank-row {
+    display: grid; grid-template-columns: 1fr auto auto;
+    gap: 12px; align-items: center;
+    background: var(--panel); border: 1px solid var(--border);
+    border-radius: 8px; padding: 10px 14px;
+    margin-bottom: 6px;
+    font-family: "SF Mono", monospace; font-size: 13px;
+    transition: transform .5s cubic-bezier(.7,0,.3,1), background .3s;
+  }
+  .rank-row .name { font-weight: 700; color: var(--accent); }
+  .rank-row .score { font-size: 16px; font-weight: 700; color: var(--text); }
+  .rank-row .rank-badge {
+    background: var(--accent); color: #0a1218;
+    border-radius: 999px; padding: 3px 10px;
+    font-size: 12px; font-weight: 700;
+    min-width: 50px; text-align: center;
+  }
+  .rank-row.tied { background: rgba(240,169,106,.08); border-color: var(--accent-2); }
+
+  /* footer */
+  footer { color: var(--muted); font-size: 12px; padding: 24px 28px; border-top: 1px solid var(--border); text-align: center; }
+  footer code { background: var(--panel-2); padding: 2px 6px; border-radius: 4px; }
+</style>
+</head>
+<body>
+
+<header>
+  <h1>Pandas Concepts <span class="pill">interactive</span></h1>
+  <p>Companion visualisations for the 3-hour pandas lesson. Click a tab to explore.</p>
+</header>
+
+<nav class="tabs" id="tabs">
+  <button class="active" data-tab="anatomy">1. DataFrame Anatomy</button>
+  <button data-tab="locvsiloc">2. loc vs iloc</button>
+  <button data-tab="boolean">3. Boolean Masking</button>
+  <button data-tab="apply">4. apply()</button>
+  <button data-tab="sortrank">5. sort_values & rank</button>
+</nav>
+
+<div id="tooltip"></div>
+
+<main>
+
+<!-- ============================================================== -->
+<!-- TAB 1: DATAFRAME ANATOMY                                         -->
+<!-- ============================================================== -->
+<section class="tab active" id="anatomy">
+  <h2 class="section-title">1 · The Anatomy of a DataFrame</h2>
+  <p class="lede">A DataFrame is a 2-D table with three labelled parts: the <strong>index</strong> (row labels), the <strong>columns</strong> (column labels), and the <strong>values</strong>. Every column is a Series; the DataFrame is what you get when you bundle Series together that share the same index. Hover any cell, header, or index label to see what it is.</p>
+
+  <div class="row">
+    <div class="col" style="flex: 2 1 480px;">
+      <div class="df-wrap">
+        <table class="df" id="anatomyTable"></table>
+      </div>
+      <p class="annotation">Try hovering each part. The blue badge under each column header is the <strong>dtype</strong> — pandas tracks the type of every column so it knows how to do math.</p>
+    </div>
+
+    <div class="col">
+      <div class="panel">
+        <h3>Toggle view</h3>
+        <div class="btn-row">
+          <button class="btn primary" id="anatToggleBtn">Show as dict-of-Series</button>
+        </div>
+        <p style="margin: 10px 0 0; font-size: 13px; color: var(--muted);">A DataFrame is literally a dictionary where each value is a Series — and every Series shares the same index. This view makes that explicit.</p>
+      </div>
+
+      <div class="panel" style="margin-top: 14px;">
+        <h3>Three things to remember</h3>
+        <ul style="margin: 0; padding-left: 18px; color: var(--muted); font-size: 13px;">
+          <li><strong style="color: var(--text)">Index</strong> &mdash; row labels. Doesn't have to be 0,1,2 &mdash; can be dates, IDs, names.</li>
+          <li><strong style="color: var(--text)">Columns</strong> &mdash; column labels. Each is also a Series's <code>.name</code>.</li>
+          <li><strong style="color: var(--text)">dtypes</strong> &mdash; per-column. Mixed types fall back to <code>object</code> &mdash; slower.</li>
+        </ul>
+      </div>
+    </div>
+  </div>
+
+  <div class="panel dim" id="seriesView" style="margin-top: 18px; display: none;">
+    <h3>Three Series sharing one index</h3>
+    <div class="row" id="seriesViewRows"></div>
+  </div>
+</section>
+
+
+<!-- ============================================================== -->
+<!-- TAB 2: LOC VS ILOC                                               -->
+<!-- ============================================================== -->
+<section class="tab" id="locvsiloc">
+  <h2 class="section-title">2 · loc vs iloc &mdash; the headline concept</h2>
+  <p class="lede">The single biggest source of confusion for pandas beginners. Both panels show the <strong>same DataFrame</strong>. Click an example or type your own expression on either side and watch the same data respond differently.</p>
+
+  <div>
+    <span class="legend">🏠 <strong>loc</strong> &mdash; by label (string row name, column name)</span>
+    <span class="legend">📍 <strong>iloc</strong> &mdash; by integer position (0-based)</span>
+  </div>
+
+  <div class="row" style="margin-top: 14px;">
+    <div class="col">
+      <div class="panel">
+        <h3>🏠 .loc &mdash; label based</h3>
+        <div class="btn-row">
+          <button class="btn" data-lociloc="loc" data-expr='loc["Colorado"]'>.loc["Colorado"]</button>
+          <button class="btn" data-lociloc="loc" data-expr='loc["Ohio":"Utah"]'>.loc["Ohio":"Utah"]</button>
+          <button class="btn" data-lociloc="loc" data-expr='loc["Colorado", "two"]'>.loc["Colorado", "two"]</button>
+          <button class="btn" data-lociloc="loc" data-expr='loc[["Ohio","Utah"]]'>.loc[["Ohio","Utah"]]</button>
+        </div>
+        <input class="code" id="locInput" value='loc["Colorado"]' />
+        <div class="code-result" id="locResult"></div>
+        <div class="df-wrap" style="margin-top: 12px;">
+          <table class="df" id="locTable"></table>
+        </div>
+      </div>
+    </div>
+
+    <div class="col">
+      <div class="panel">
+        <h3>📍 .iloc &mdash; position based</h3>
+        <div class="btn-row">
+          <button class="btn" data-lociloc="iloc" data-expr='iloc[1]'>.iloc[1]</button>
+          <button class="btn" data-lociloc="iloc" data-expr='iloc[0:2]'>.iloc[0:2]</button>
+          <button class="btn" data-lociloc="iloc" data-expr='iloc[1, 1]'>.iloc[1, 1]</button>
+          <button class="btn" data-lociloc="iloc" data-expr='iloc[[0,2]]'>.iloc[[0,2]]</button>
+        </div>
+        <input class="code" id="ilocInput" value='iloc[1]' />
+        <div class="code-result" id="ilocResult"></div>
+        <div class="df-wrap" style="margin-top: 12px;">
+          <table class="df" id="ilocTable"></table>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="panel" style="margin-top: 18px; border-color: var(--accent-2); background: rgba(240,169,106,.06);">
+    <h3 style="color: var(--accent-2);">⚠️ The slicing gotcha &mdash; click both and compare</h3>
+    <div class="btn-row">
+      <button class="btn" data-lociloc="loc" data-expr='loc["Ohio":"Utah"]'>.loc["Ohio":"Utah"] &mdash; INCLUSIVE</button>
+      <button class="btn" data-lociloc="iloc" data-expr='iloc[0:2]'>.iloc[0:2] &mdash; EXCLUSIVE</button>
+    </div>
+    <p style="margin: 6px 0 0; font-size: 13px; color: var(--muted);">
+      <code>.loc</code> includes the right-hand label (3 rows back). <code>.iloc</code> follows Python list semantics &mdash; the right-hand index is excluded (2 rows back). This catches everyone, every time.
+    </p>
+  </div>
+</section>
+
+
+<!-- ============================================================== -->
+<!-- TAB 3: BOOLEAN MASKING                                           -->
+<!-- ============================================================== -->
+<section class="tab" id="boolean">
+  <h2 class="section-title">3 · Boolean Masking &mdash; the bouncer's checklist</h2>
+  <p class="lede">Filtering rows in pandas is a two-step process: <strong>compute a True/False mask</strong>, then <strong>apply the mask</strong>. Each row's True/False decides whether it survives. Slide the threshold to watch it happen.</p>
+
+  <div class="panel" style="margin-bottom: 18px;">
+    <h3>Threshold</h3>
+    <div style="display: flex; gap: 16px; align-items: center;">
+      <span style="color: var(--muted); font-size: 13px;">Show rows where <code>three &gt;</code></span>
+      <input type="range" id="threshold" min="0" max="20" value="5" step="1" />
+      <span id="thresholdValue" style="font-family: 'SF Mono', monospace; font-size: 16px; color: var(--accent); min-width: 30px; text-align: right;">5</span>
+    </div>
+  </div>
+
+  <div class="panel">
+    <h3>Step 1 &mdash; the original DataFrame</h3>
+    <div class="df-wrap"><table class="df" id="boolOrigTable"></table></div>
+  </div>
+
+  <div class="panel" style="margin-top: 14px;">
+    <h3>Step 2 &mdash; compute the mask: <span style="font-family: monospace; color: var(--accent-2);" id="maskExpr">data["three"] &gt; 5</span></h3>
+    <div class="df-wrap"><table class="df" id="boolMaskTable"></table></div>
+    <p class="annotation">The bouncer reads each row's value of <code>three</code> and stamps True (let through) or False (turn away).</p>
+  </div>
+
+  <div class="panel" style="margin-top: 14px;">
+    <h3>Step 3 &mdash; apply the mask: <span style="font-family: monospace; color: var(--good);" id="filterExpr">data[data["three"] &gt; 5]</span></h3>
+    <div class="df-wrap"><table class="df" id="boolResultTable"></table></div>
+  </div>
+</section>
+
+
+<!-- ============================================================== -->
+<!-- TAB 4: APPLY                                                     -->
+<!-- ============================================================== -->
+<section class="tab" id="apply">
+  <h2 class="section-title">4 · apply() &mdash; pandas runs the loop for you</h2>
+  <p class="lede"><code>series.apply(fn)</code> is a <code>for</code> loop you don't have to write. Each element walks through the function box, gets transformed, and lands in the output. Click <strong>Run apply()</strong> to watch it happen one element at a time.</p>
+
+  <div class="apply-stage">
+    <div class="panel">
+      <h3>Input Series</h3>
+      <div id="applyInput"></div>
+      <p style="margin-top: 10px; font-size: 11px; color: var(--muted);">e.g. <code>frame['age']</code></p>
+    </div>
+    <div class="arrow-big">→</div>
+    <div class="panel">
+      <h3>Function (editable)</h3>
+      <textarea class="code" id="applyFn" rows="7">// JS port of the notebook's age_classification:
+// def age_classification(val):
+//     return "Adult" if val > 19 else "Youngster"
+function fn(val) {
+  return val > 19 ? "Adult" : "Youngster";
+}</textarea>
+    </div>
+    <div class="arrow-big">→</div>
+    <div class="panel">
+      <h3>Output Series</h3>
+      <div id="applyOutput"></div>
+    </div>
+  </div>
+
+  <div class="btn-row" style="margin-top: 16px;">
+    <button class="btn primary" id="applyRun">▶ Run apply()</button>
+    <button class="btn" id="applyReset">Reset</button>
+    <button class="btn" data-applypreset='{"fn":"function fn(val) {\n  return val > 19 ? \"Adult\" : \"Youngster\";\n}","data":[4,7,30,55]}'>Preset: age_classification</button>
+    <button class="btn" data-applypreset='{"fn":"function fn(val) {\n  return val * 1.1;  // 10% raise\n}","data":[50000,72000,95000,120000]}'>Preset: 10% raise</button>
+    <button class="btn" data-applypreset='{"fn":"function fn(val) {\n  if (val < 60) return \"Fail\";\n  if (val < 80) return \"Pass\";\n  return \"Distinction\";\n}","data":[45,67,82,91,55,78]}'>Preset: grade buckets</button>
+  </div>
+
+  <p class="annotation">Notice: the function knows nothing about pandas &mdash; it's just a function from one value to one value. <code>.apply()</code> is the loop that calls it for every element. <strong>That's why <code>apply()</code> is slow on huge data &mdash; it's still a Python loop.</strong> Use vectorized arithmetic when you can.</p>
+</section>
+
+
+<!-- ============================================================== -->
+<!-- TAB 5: SORT_VALUES & RANK                                        -->
+<!-- ============================================================== -->
+<section class="tab" id="sortrank">
+  <h2 class="section-title">5 · sort_values & rank &mdash; ordering with ties</h2>
+  <p class="lede">Sorting reorders rows. Ranking labels rows in order &mdash; without moving them. Notice this leaderboard has a deliberate <strong>tie</strong> (Bob and Eve both scored 78). The <code>method=</code> argument decides how the tie is resolved.</p>
+
+  <div class="row">
+    <div class="col" style="flex: 2 1 500px;">
+      <div class="panel">
+        <h3>Leaderboard</h3>
+        <div class="btn-row">
+          <button class="btn" data-sortbtn="reset">↺ Reset</button>
+          <button class="btn" data-sortbtn="sortAsc">sort_values("Math")</button>
+          <button class="btn" data-sortbtn="sortDesc">sort_values("Math", ascending=False)</button>
+          <button class="btn" data-sortbtn="rank-average">rank() &mdash; average</button>
+          <button class="btn" data-sortbtn="rank-min">rank(method="min")</button>
+          <button class="btn" data-sortbtn="rank-dense">rank(method="dense")</button>
+          <button class="btn" data-sortbtn="rank-first">rank(method="first")</button>
+        </div>
+        <div id="rankList"></div>
+      </div>
+    </div>
+
+    <div class="col">
+      <div class="panel">
+        <h3>How each method handles ties</h3>
+        <table style="width:100%; border-collapse: collapse; font-size: 13px;">
+          <thead>
+            <tr style="border-bottom: 1px solid var(--border);">
+              <th style="text-align:left; padding:6px; color:var(--muted);">method</th>
+              <th style="text-align:left; padding:6px; color:var(--muted);">tie behaviour</th>
+            </tr>
+          </thead>
+          <tbody style="font-family: 'SF Mono', monospace; font-size: 12px;">
+            <tr><td style="padding:6px; color:var(--accent);">average</td><td style="padding:6px; color:var(--muted);">tied rows share the average rank (e.g. 2.5, 2.5)</td></tr>
+            <tr><td style="padding:6px; color:var(--accent);">min</td><td style="padding:6px; color:var(--muted);">all tied get the lowest rank in the group (2, 2, then next is 4)</td></tr>
+            <tr><td style="padding:6px; color:var(--accent);">max</td><td style="padding:6px; color:var(--muted);">all tied get the highest rank (3, 3, then next is 4)</td></tr>
+            <tr><td style="padding:6px; color:var(--accent);">dense</td><td style="padding:6px; color:var(--muted);">like min, but the next rank is +1 (2, 2, then next is 3)</td></tr>
+            <tr><td style="padding:6px; color:var(--accent);">first</td><td style="padding:6px; color:var(--muted);">break ties by order in the data (2, 3 &mdash; whoever appeared first wins)</td></tr>
+          </tbody>
+        </table>
+        <p class="annotation">Sales leaderboards usually want <code>min</code> (no shared 2.5th place). Olympic medal counts usually want <code>min</code> too (two golds → no silver awarded).</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+</main>
+
+<footer>
+  Single-file companion to <code>notebooks/pandas_lesson.ipynb</code> &mdash; no external dependencies. Open in any browser.
+</footer>
+
+<script>
+/* =========================================================
+   GLOBAL: tabs + tooltip
+   ========================================================= */
+const tabsNav = document.getElementById('tabs');
+tabsNav.addEventListener('click', e => {
+  if (e.target.tagName !== 'BUTTON') return;
+  const tab = e.target.dataset.tab;
+  tabsNav.querySelectorAll('button').forEach(b => b.classList.toggle('active', b === e.target));
+  document.querySelectorAll('section.tab').forEach(s => s.classList.toggle('active', s.id === tab));
+});
+
+const tooltip = document.getElementById('tooltip');
+function attachTooltip(el, getText) {
+  el.addEventListener('mouseenter', e => {
+    tooltip.textContent = typeof getText === 'function' ? getText() : getText;
+    tooltip.style.opacity = '1';
+  });
+  el.addEventListener('mousemove', e => {
+    tooltip.style.left = (e.clientX + 14) + 'px';
+    tooltip.style.top = (e.clientY + 14) + 'px';
+  });
+  el.addEventListener('mouseleave', () => { tooltip.style.opacity = '0'; });
+}
+
+/* =========================================================
+   SHARED DATA
+   ========================================================= */
+// Tab 1 dataset (from notebook cell 8)
+const anatomyData = {
+  index: [0, 1, 2, 3, 4, 5],
+  columns: ['state', 'year', 'pop'],
+  dtypes: ['object', 'int64', 'float64'],
+  values: [
+    ['Ohio', 2000, 1.5],
+    ['Ohio', 2001, 1.7],
+    ['Ohio', 2002, 3.6],
+    ['Nevada', 2001, 2.4],
+    ['Nevada', 2002, 2.9],
+    ['Nevada', 2003, 3.2],
+  ],
+};
+
+// Tab 2 & 3 dataset (from notebook cell 41)
+const stateData = {
+  index: ['Ohio', 'Colorado', 'Utah', 'New York'],
+  columns: ['one', 'two', 'three', 'four'],
+  dtypes: ['int64', 'int64', 'int64', 'int64'],
+  values: [
+    [0, 1, 2, 3],
+    [4, 5, 6, 7],
+    [8, 9, 10, 11],
+    [12, 13, 14, 15],
+  ],
+};
+
+/* =========================================================
+   Render helper: build a DataFrame <table>
+   ========================================================= */
+function renderDF(table, df, opts = {}) {
+  const {
+    showDtype = true,
+    extraCols = [],            // [{name, values, type}]
+    fadeRows = [],             // array of bools (true=faded)
+    droppedRows = [],          // array of bools (true=dropped)
+    highlightCells = {},       // { 'rowIdx,colIdx': 'hl' | 'hl-row' }
+    rowOrder = null,           // array of indices to control display order
+  } = opts;
+
+  table.innerHTML = '';
+  const order = rowOrder || df.index.map((_, i) => i);
+
+  // header row
+  const thead = document.createElement('thead');
+  const trh = document.createElement('tr');
+  const corner = document.createElement('th');
+  corner.className = 'idx-h';
+  corner.textContent = 'index';
+  trh.appendChild(corner);
+  df.columns.forEach((c, ci) => {
+    const th = document.createElement('th');
+    th.innerHTML = c;
+    if (showDtype) {
+      const d = document.createElement('span');
+      d.className = 'dtype';
+      d.textContent = df.dtypes[ci];
+      th.appendChild(d);
+    }
+    th.dataset.col = ci;
+    attachTooltip(th, `Column "${c}" — a Series with dtype ${df.dtypes[ci]}.`);
+    trh.appendChild(th);
+  });
+  extraCols.forEach(ec => {
+    const th = document.createElement('th');
+    th.innerHTML = ec.name;
+    if (showDtype && ec.type) {
+      const d = document.createElement('span');
+      d.className = 'dtype';
+      d.textContent = ec.type;
+      th.appendChild(d);
+    }
+    trh.appendChild(th);
+  });
+  thead.appendChild(trh);
+  table.appendChild(thead);
+
+  // body rows
+  const tbody = document.createElement('tbody');
+  order.forEach(rIdx => {
+    const tr = document.createElement('tr');
+    if (droppedRows[rIdx]) tr.style.display = 'none';
+    const idxCell = document.createElement('td');
+    idxCell.className = 'idx';
+    idxCell.textContent = df.index[rIdx];
+    attachTooltip(idxCell, `Index label for row ${rIdx} — used by .loc[...]`);
+    tr.appendChild(idxCell);
+
+    df.values[rIdx].forEach((v, cIdx) => {
+      const td = document.createElement('td');
+      const isNum = typeof v === 'number';
+      td.className = isNum ? 'num' : '';
+      td.textContent = v;
+      const key = `${rIdx},${cIdx}`;
+      if (highlightCells[key]) td.classList.add(highlightCells[key]);
+      if (fadeRows[rIdx]) td.classList.add('faded');
+      attachTooltip(td, `(${df.index[rIdx]}, ${df.columns[cIdx]}) → ${v}`);
+      tr.appendChild(td);
+    });
+
+    extraCols.forEach(ec => {
+      const td = document.createElement('td');
+      const v = ec.values[rIdx];
+      td.textContent = v;
+      if (typeof v === 'boolean') {
+        td.className = v ? 'true-cell' : 'false-cell';
+        td.textContent = v ? 'True' : 'False';
+      }
+      tr.appendChild(td);
+    });
+
+    tbody.appendChild(tr);
+  });
+  table.appendChild(tbody);
+}
+
+/* =========================================================
+   TAB 1 — DataFrame anatomy
+   ========================================================= */
+const anatomyTable = document.getElementById('anatomyTable');
+renderDF(anatomyTable, anatomyData);
+
+document.getElementById('anatToggleBtn').addEventListener('click', () => {
+  const view = document.getElementById('seriesView');
+  const btn = document.getElementById('anatToggleBtn');
+  if (view.style.display === 'none') {
+    view.style.display = 'block';
+    btn.textContent = 'Hide dict-of-Series view';
+    renderSeriesView();
+  } else {
+    view.style.display = 'none';
+    btn.textContent = 'Show as dict-of-Series';
+  }
+});
+
+function renderSeriesView() {
+  const wrap = document.getElementById('seriesViewRows');
+  wrap.innerHTML = '';
+  anatomyData.columns.forEach((col, ci) => {
+    const card = document.createElement('div');
+    card.className = 'col';
+    card.innerHTML = `
+      <div class="panel">
+        <h3>Series: "${col}" <span style="color:var(--muted); font-weight:400;">[${anatomyData.dtypes[ci]}]</span></h3>
+        <table class="df" style="width:100%;">
+          <tbody>
+          ${anatomyData.index.map((idx, ri) => `
+            <tr>
+              <td class="idx" style="width:30%;">${idx}</td>
+              <td class="${typeof anatomyData.values[ri][ci] === 'number' ? 'num' : ''}">${anatomyData.values[ri][ci]}</td>
+            </tr>
+          `).join('')}
+          </tbody>
+        </table>
+      </div>
+    `;
+    wrap.appendChild(card);
+  });
+}
+
+/* =========================================================
+   TAB 2 — loc vs iloc
+   ========================================================= */
+function applyLocIloc(expr, kind) {
+  // Returns { highlightCells, resultText } or { error }
+  expr = expr.trim().replace(/^\.?/, '').replace(/^iloc/, 'iloc').replace(/^loc/, 'loc');
+  // Match: kind[arg]  or  kind[arg, arg2]
+  const m = expr.match(/^(loc|iloc)\[(.+)\]$/);
+  if (!m) return { error: `Could not parse "${expr}". Try ${kind}["..."]  or  ${kind}[0:2]` };
+  const got = m[1], inner = m[2];
+  if (got !== kind) return { error: `This panel is ${kind}, but expression uses ${got}.` };
+
+  // split on top-level comma
+  const parts = splitTopLevelComma(inner);
+  if (parts.length > 2) return { error: 'Too many indexers (max 2: rows, columns).' };
+  const rowSpec = parts[0];
+  const colSpec = parts.length === 2 ? parts[1] : null;
+
+  const rowMask = resolveSpec(rowSpec, kind, 'row');
+  if (rowMask.error) return rowMask;
+  const colMask = colSpec ? resolveSpec(colSpec, kind, 'col') : { indices: stateData.columns.map((_, i) => i) };
+  if (colMask.error) return colMask;
+
+  const highlightCells = {};
+  rowMask.indices.forEach(r => colMask.indices.forEach(c => {
+    highlightCells[`${r},${c}`] = 'hl';
+  }));
+
+  // build result text
+  let resultText;
+  if (rowMask.indices.length === 1 && colMask.indices.length === 1) {
+    resultText = String(stateData.values[rowMask.indices[0]][colMask.indices[0]]);
+  } else if (rowMask.indices.length === 1) {
+    resultText = colMask.indices.map(c => `${stateData.columns[c].padEnd(8)} ${stateData.values[rowMask.indices[0]][c]}`).join('\n')
+      + `\nName: ${stateData.index[rowMask.indices[0]]}, dtype: int64`;
+  } else if (colMask.indices.length === 1) {
+    resultText = rowMask.indices.map(r => `${stateData.index[r].padEnd(10)} ${stateData.values[r][colMask.indices[0]]}`).join('\n')
+      + `\nName: ${stateData.columns[colMask.indices[0]]}, dtype: int64`;
+  } else {
+    const headers = '          ' + colMask.indices.map(c => stateData.columns[c].padStart(6)).join('');
+    const rows = rowMask.indices.map(r =>
+      stateData.index[r].padEnd(10) + colMask.indices.map(c => String(stateData.values[r][c]).padStart(6)).join('')
+    );
+    resultText = [headers, ...rows].join('\n');
+  }
+
+  return { highlightCells, resultText };
+}
+
+function splitTopLevelComma(s) {
+  const out = []; let depth = 0; let buf = '';
+  for (const ch of s) {
+    if (ch === '[' || ch === '(') depth++;
+    if (ch === ']' || ch === ')') depth--;
+    if (ch === ',' && depth === 0) { out.push(buf.trim()); buf = ''; }
+    else buf += ch;
+  }
+  if (buf.trim()) out.push(buf.trim());
+  return out;
+}
+
+function resolveSpec(spec, kind, axis) {
+  spec = spec.trim();
+  const labels = axis === 'row' ? stateData.index : stateData.columns;
+
+  // list: [a, b, ...]
+  if (spec.startsWith('[') && spec.endsWith(']')) {
+    const inner = spec.slice(1, -1);
+    const items = splitTopLevelComma(inner).map(s => s.replace(/['"]/g, '').trim());
+    const indices = items.map(it => {
+      if (kind === 'iloc') return parseInt(it, 10);
+      return labels.indexOf(it);
+    });
+    if (indices.some(i => i < 0 || isNaN(i) || i >= labels.length))
+      return { error: `Unknown ${axis} label/position in list: ${spec}` };
+    return { indices };
+  }
+
+  // slice: a:b
+  if (spec.includes(':')) {
+    const [aRaw, bRaw] = spec.split(':');
+    if (kind === 'iloc') {
+      const a = aRaw.trim() === '' ? 0 : parseInt(aRaw, 10);
+      const b = bRaw.trim() === '' ? labels.length : parseInt(bRaw, 10);
+      const out = [];
+      for (let i = a; i < b; i++) out.push(i);
+      return { indices: out };
+    } else {
+      const aLab = aRaw.replace(/['"]/g, '').trim();
+      const bLab = bRaw.replace(/['"]/g, '').trim();
+      const a = aLab === '' ? 0 : labels.indexOf(aLab);
+      const b = bLab === '' ? labels.length - 1 : labels.indexOf(bLab);
+      if (a < 0 || b < 0) return { error: `Unknown label in slice: ${spec}` };
+      const out = [];
+      for (let i = a; i <= b; i++) out.push(i);  // inclusive!
+      return { indices: out };
+    }
+  }
+
+  // single
+  const cleaned = spec.replace(/['"]/g, '').trim();
+  if (kind === 'iloc') {
+    const n = parseInt(cleaned, 10);
+    if (isNaN(n) || n < 0 || n >= labels.length) return { error: `Position out of range: ${cleaned}` };
+    return { indices: [n] };
+  } else {
+    const n = labels.indexOf(cleaned);
+    if (n < 0) return { error: `Unknown label: "${cleaned}"` };
+    return { indices: [n] };
+  }
+}
+
+const locTable  = document.getElementById('locTable');
+const ilocTable = document.getElementById('ilocTable');
+const locInput  = document.getElementById('locInput');
+const ilocInput = document.getElementById('ilocInput');
+const locResult = document.getElementById('locResult');
+const ilocResult = document.getElementById('ilocResult');
+
+function refreshLoc(kind) {
+  const input = kind === 'loc' ? locInput : ilocInput;
+  const result = kind === 'loc' ? locResult : ilocResult;
+  const table  = kind === 'loc' ? locTable : ilocTable;
+  const r = applyLocIloc(input.value, kind);
+  if (r.error) {
+    result.textContent = '⚠️ ' + r.error;
+    result.classList.add('err');
+    renderDF(table, stateData);
+  } else {
+    result.textContent = r.resultText;
+    result.classList.remove('err');
+    renderDF(table, stateData, { highlightCells: r.highlightCells });
+  }
+}
+locInput.addEventListener('input', () => refreshLoc('loc'));
+ilocInput.addEventListener('input', () => refreshLoc('iloc'));
+
+document.querySelectorAll('[data-lociloc]').forEach(btn => {
+  btn.addEventListener('click', () => {
+    const kind = btn.dataset.lociloc;
+    const input = kind === 'loc' ? locInput : ilocInput;
+    input.value = btn.dataset.expr;
+    refreshLoc(kind);
+  });
+});
+
+refreshLoc('loc'); refreshLoc('iloc');
+
+/* =========================================================
+   TAB 3 — Boolean masking
+   ========================================================= */
+const slider = document.getElementById('threshold');
+const slVal  = document.getElementById('thresholdValue');
+const boolOrigTable   = document.getElementById('boolOrigTable');
+const boolMaskTable   = document.getElementById('boolMaskTable');
+const boolResultTable = document.getElementById('boolResultTable');
+const maskExprEl   = document.getElementById('maskExpr');
+const filterExprEl = document.getElementById('filterExpr');
+
+function refreshBool() {
+  const t = parseInt(slider.value, 10);
+  slVal.textContent = t;
+  maskExprEl.textContent = `data["three"] > ${t}`;
+  filterExprEl.textContent = `data[data["three"] > ${t}]`;
+  // mask: index of column "three" is 2
+  const mask = stateData.values.map(row => row[2] > t);
+  renderDF(boolOrigTable, stateData);
+  renderDF(boolMaskTable, stateData, {
+    extraCols: [{ name: `three &gt; ${t}`, type: 'bool', values: mask }],
+    fadeRows: mask.map(b => !b),
+  });
+  renderDF(boolResultTable, stateData, {
+    droppedRows: mask.map(b => !b),
+  });
+}
+slider.addEventListener('input', refreshBool);
+refreshBool();
+
+/* =========================================================
+   TAB 4 — apply()
+   ========================================================= */
+let applyData = [4, 7, 30, 55];
+let applyFnText = document.getElementById('applyFn').value;
+const applyInputDiv  = document.getElementById('applyInput');
+const applyOutputDiv = document.getElementById('applyOutput');
+const applyFnEl = document.getElementById('applyFn');
+applyFnEl.addEventListener('input', () => { applyFnText = applyFnEl.value; renderApply(); });
+
+function renderApply() {
+  applyInputDiv.innerHTML = '';
+  applyOutputDiv.innerHTML = '';
+  applyData.forEach((v, i) => {
+    const inEl = document.createElement('div');
+    inEl.className = 'in-cell'; inEl.dataset.idx = i;
+    inEl.textContent = `${i}    ${v}`;
+    applyInputDiv.appendChild(inEl);
+
+    const outEl = document.createElement('div');
+    outEl.className = 'out-cell'; outEl.dataset.idx = i;
+    outEl.textContent = `${i}    ?`;
+    applyOutputDiv.appendChild(outEl);
+  });
+}
+renderApply();
+
+document.getElementById('applyRun').addEventListener('click', async () => {
+  let fn;
+  try {
+    // User's textarea defines `function fn(...)`. Wrap and return it.
+    fn = new Function(applyFnText + '\nreturn fn;')();
+    if (typeof fn !== 'function') throw new Error('No function named "fn" was defined.');
+  } catch (e) {
+    alert('Function did not compile: ' + e.message);
+    return;
+  }
+  const ins = [...applyInputDiv.children];
+  const outs = [...applyOutputDiv.children];
+  for (let i = 0; i < applyData.length; i++) {
+    ins[i].classList.add('active');
+    outs[i].classList.add('active');
+    await sleep(450);
+    let v;
+    try { v = fn(applyData[i]); } catch (e) { v = 'ERR'; }
+    outs[i].textContent = `${i}    ${v}`;
+    outs[i].classList.remove('active');
+    outs[i].classList.add('done');
+    ins[i].classList.remove('active');
+    await sleep(180);
+  }
+});
+
+document.getElementById('applyReset').addEventListener('click', renderApply);
+document.querySelectorAll('[data-applypreset]').forEach(btn => {
+  btn.addEventListener('click', () => {
+    const preset = JSON.parse(btn.dataset.applypreset);
+    applyFnEl.value = preset.fn;
+    applyFnText = preset.fn;
+    applyData = preset.data;
+    renderApply();
+  });
+});
+
+function sleep(ms) { return new Promise(r => setTimeout(r, ms)); }
+
+/* =========================================================
+   TAB 5 — sort_values & rank
+   ========================================================= */
+const students = [
+  { name: 'Alice',   math: 92 },
+  { name: 'Bob',     math: 78 },
+  { name: 'Charlie', math: 88 },
+  { name: 'David',   math: 65 },
+  { name: 'Eve',     math: 78 },   // tie with Bob
+];
+
+function computeRanks(values, method) {
+  // rank descending (highest = rank 1)
+  const sorted = values
+    .map((v, i) => ({ v, i }))
+    .sort((a, b) => b.v - a.v);
+
+  const ranks = new Array(values.length);
+
+  if (method === 'first') {
+    sorted.forEach((s, idx) => { ranks[s.i] = idx + 1; });
+    return ranks;
+  }
+
+  // group ties
+  let pos = 0;
+  while (pos < sorted.length) {
+    let end = pos;
+    while (end + 1 < sorted.length && sorted[end + 1].v === sorted[pos].v) end++;
+    const group = sorted.slice(pos, end + 1);
+    let r;
+    switch (method) {
+      case 'min':     r = pos + 1; group.forEach(g => ranks[g.i] = r); break;
+      case 'max':     r = end + 1; group.forEach(g => ranks[g.i] = r); break;
+      case 'dense': {
+        // dense: ranks are based on # of unique values seen so far
+        const uniqueSeen = (function() {
+          const seen = new Set();
+          for (let k = 0; k <= end; k++) seen.add(sorted[k].v);
+          return seen.size;
+        })();
+        r = uniqueSeen;
+        group.forEach(g => ranks[g.i] = r);
+        break;
+      }
+      case 'average':
+      default: {
+        const avg = (pos + 1 + end + 1) / 2;
+        group.forEach(g => ranks[g.i] = avg);
+        break;
+      }
+    }
+    pos = end + 1;
+  }
+  return ranks;
+}
+
+const rankList = document.getElementById('rankList');
+let rankState = { order: students.map((_, i) => i), ranks: null, tieIndices: [1, 4] };
+
+function renderRank() {
+  rankList.innerHTML = '';
+  rankState.order.forEach(i => {
+    const s = students[i];
+    const div = document.createElement('div');
+    div.className = 'rank-row';
+    if (rankState.tieIndices.includes(i)) div.classList.add('tied');
+    const rankPart = rankState.ranks
+      ? `<span class="rank-badge">#${formatRank(rankState.ranks[i])}</span>`
+      : '<span style="color:var(--muted); font-size:11px;">no rank</span>';
+    div.innerHTML = `
+      <span class="name">${s.name}</span>
+      <span class="score">${s.math}</span>
+      ${rankPart}
+    `;
+    rankList.appendChild(div);
+  });
+}
+function formatRank(r) {
+  return r % 1 === 0 ? r.toString() : r.toFixed(1);
+}
+renderRank();
+
+document.querySelectorAll('[data-sortbtn]').forEach(btn => {
+  btn.addEventListener('click', () => {
+    const action = btn.dataset.sortbtn;
+    if (action === 'reset') {
+      rankState = { order: students.map((_, i) => i), ranks: null, tieIndices: [1, 4] };
+    } else if (action === 'sortAsc') {
+      rankState.ranks = null;
+      rankState.order = students.map((_, i) => i).sort((a, b) => students[a].math - students[b].math);
+    } else if (action === 'sortDesc') {
+      rankState.ranks = null;
+      rankState.order = students.map((_, i) => i).sort((a, b) => students[b].math - students[a].math);
+    } else if (action.startsWith('rank-')) {
+      const method = action.slice('rank-'.length);
+      rankState.ranks = computeRanks(students.map(s => s.math), method);
+    }
+    renderRank();
+  });
+});
+
+</script>
+</body>
+</html>
